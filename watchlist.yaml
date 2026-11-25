@@ -1,0 +1,17 @@
+# dealcheck watchlist
+# Add products with `dealcheck add <url> --name "..." --target 199` or edit this file.
+# Secrets (Keepa key, ntfy topic, Telegram token) are read from environment variables only.
+
+settings:
+  history_days: 180   # compare against the last 6 months
+  currency: EUR
+
+notify: {}
+  # ntfy_server: https://ntfy.sh   # or your own ntfy instance
+
+products: []
+  # - url: https://www.amazon.de/dp/B09XS7JWHH
+  #   name: Sony WH-1000XM5
+  #   target: 249
+  # - url: https://www.otto.de/p/...
+  #   name: Saugroboter

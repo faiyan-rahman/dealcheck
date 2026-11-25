@@ -1,0 +1,65 @@
+# Runs the price agent every 3 hours for free on GitHub Actions:
+# checks every product, commits the new prices to data/ and publishes the dashboard to GitHub Pages.
+name: track
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: track
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install .
+
+      - name: Check prices
+        env:
+          KEEPA_API_KEY: ${{ secrets.KEEPA_API_KEY }}
+          DEALCHECK_NTFY_TOPIC: ${{ secrets.DEALCHECK_NTFY_TOPIC }}
+          DEALCHECK_TELEGRAM_TOKEN: ${{ secrets.DEALCHECK_TELEGRAM_TOKEN }}
+          DEALCHECK_TELEGRAM_CHAT_ID: ${{ secrets.DEALCHECK_TELEGRAM_CHAT_ID }}
+        run: |
+          dealcheck check --no-report || echo "::warning::Some products could not be checked, see the log above"
+          dealcheck report
+
+      - name: Commit new prices
+        run: |
+          git config user.name "dealcheck-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          [ -d data ] && git add data
+          git diff --cached --quiet || git commit -m "data: prices $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
+
+      - uses: actions/configure-pages@v5
+        continue-on-error: true
+        id: pages
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outcome == 'success'
+        with:
+          path: site
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
+        continue-on-error: true
